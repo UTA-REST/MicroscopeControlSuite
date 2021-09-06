@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[20]:
-
 
 import matplotlib.pyplot as plt
 import os
@@ -15,8 +13,6 @@ from pipython import pitools
 import time
 
 
-# In[12]:
-
 
 class Camera:
     def __init__(self):
@@ -27,8 +23,6 @@ class Camera:
         print("Base class setup")
 
 
-# In[21]:
-
 
 class CamFLIR(Camera):
     
@@ -36,7 +30,7 @@ class CamFLIR(Camera):
     nodemap=None
     nodemap_tldevice=None
     
-    def acquire_images(self,N=1):
+    def __acquire_images(self,N=1):
 
         ToReturn=[]
         #print('*** IMAGE ACQUISITION ***\n')
@@ -88,7 +82,7 @@ class CamFLIR(Camera):
 
             #print('Acquisition mode set to single...')
 
-            #  Begin acquiring images
+            #  Begin 
             #
             #  *** NOTES ***
             #  What happens when the camera begins acquiring images depends on the
@@ -206,7 +200,7 @@ class CamFLIR(Camera):
             exptime=500000
             exposure.SetValue(exptime)
             # Acquire images
-            ReturnVec= acquire_images(self.cam, self.nodemap, self.nodemap_tldevice,N)
+            ReturnVec= self.__acquire_images(N)
             time.sleep(exptime*2/1e6)
             # Deinitialize camera
             self.cam.DeInit()
@@ -230,20 +224,6 @@ class CamFLIR(Camera):
         
     def __init__(self):
 
-        # Since this application saves images in the current folder
-        # we must ensure that we have permission to write to this folder.
-        # If we do not have permission, fail right away.
-        try:
-            test_file = open('test.txt', 'w+')
-        except IOError:
-            print('Unable to write to current directory. Please check permissions.')
-            input('Press Enter to exit...')
-            return False
-
-        test_file.close()
-        os.remove(test_file.name)
-
-        result = True
 
         # Retrieve singleton reference to system object
         self.system = PySpin.System.GetInstance()
@@ -272,11 +252,8 @@ class CamFLIR(Camera):
 
         # Run example on each camera
         self.cam=self.cam_list[0]
-        return True
 
 
-
-# In[26]:
 
 
 class Stage:
@@ -285,38 +262,41 @@ class Stage:
     Y=None
     Z=None
 
-    X_Axis=None
-    Y_Axis=None
-    Z_Axis=None
+    __X_Axis=None
+    __Y_Axis=None
+    __Z_Axis=None
     
-    def __init__(self,zeroxy=True):
+    def __init__(self,XYZStart=(0,0,3.35)):
         Controller = 'E-873'
-        self.X_Axis = GCSDevice(Controller)
-        self.Y_Axis = GCSDevice(Controller) 
-        self.Z_Axis = GCSDevice(Controller)
-        self.X_Axis.ConnectUSB(serialnum='120002968')
-        pitools.startup(self.X_Axis)
+        self.__X_Axis = GCSDevice(Controller)
+        self.__Y_Axis = GCSDevice(Controller) 
+        self.__Z_Axis = GCSDevice(Controller)
+       
+        self.__X_Axis.ConnectUSB(serialnum='120002968')
+        pitools.startup(self.__X_Axis)
 
-        self.Y_Axis.ConnectUSB(serialnum='120003784')
-        pitools.startup(self.Y_Axis)
-        self.Y_Axis.MOV(self.Y_Axis.axes, 0.0)
-        self.Z_Axis.ConnectUSB(serialnum='120002962')
+        self.__Y_Axis.ConnectUSB(serialnum='120003784')
+        pitools.startup(self.__Y_Axis)
+        self.__Y_Axis.MOV(self.__Y_Axis.axes, 0.0)
+        self.__Z_Axis.ConnectUSB(serialnum='120002962')
 
-        pitools.startup(self.Z_Axis)
-        if(zeroxy):
-            X_Axis.MOV(self.X_Axis.axes, 0.0)
-            Y_Axis.MOV(self.Y_Axis.axes, 0.0)
+        pitools.startup(self.__Z_Axis)
+        if(XYZStart!=None):
+            self.MoveToX( XYZStart[0])
+            self.MoveToY( XYZStart[1])
+            self.MoveToZ( XYZStart[2])
+        
 
     def MoveToX(self,x):
-        self.X_Axis.MOV(self.X_Axis.axes, x)
+        self.__X_Axis.MOV(self.__X_Axis.axes, x)
         self.X=x
         
     def MoveToY(self,y):
-        self.Y_Axis.MOV(self.Y_Axis.axes, y)
+        self.__Y_Axis.MOV(self.__Y_Axis.axes, y)
         self.Y=y
         
     def MoveToZ(self,z):
-        self.Z_Axis.MOV(self.Z_Axis.axes, z)
+        self.__Z_Axis.MOV(self.__Z_Axis.axes, z)
         self.Z=z
         
     def MoveTo(self,x,y,z):
