@@ -1,5 +1,7 @@
 from pipython import GCSDevice
 from pipython import pitools
+import time
+
 
 class Stage:
 
@@ -19,13 +21,22 @@ class Stage:
 
         self.__X_Axis.ConnectUSB(serialnum='120002968')
         pitools.startup(self.__X_Axis)
+        self.__X_Axis.SVO( self.__X_Axis.axes, values=True)
 
         self.__Y_Axis.ConnectUSB(serialnum='120003784')
         pitools.startup(self.__Y_Axis)
-        self.__Y_Axis.MOV(self.__Y_Axis.axes, 0.0)
+        self.__Y_Axis.SVO( self.__Y_Axis.axes, values=True)
+        
         self.__Z_Axis.ConnectUSB(serialnum='120002962')
-
         pitools.startup(self.__Z_Axis)
+        self.__Z_Axis.SVO( self.__Z_Axis.axes, values=True)
+        
+        self.__Z_Axis.FNL(self.__Z_Axis.axes)
+        self.__X_Axis.FNL(self.__X_Axis.axes)
+        self.__Y_Axis.FNL(self.__Y_Axis.axes)
+        
+        time.sleep(10)
+        
         if(XYZStart!=None):
             self.MoveToX( XYZStart[0])
             self.MoveToY( XYZStart[1])
@@ -48,3 +59,6 @@ class Stage:
         self.MoveToX(x)
         self.MoveToY(y)
         self.MoveToZ(z)
+        
+    def GetAxes(self):
+        return(self.__X_Axis, self.__Y_Axis, self.__Z_Axis)

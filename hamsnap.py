@@ -3,8 +3,12 @@
 from hamamatsu.dcam import dcam, Stream, copy_frame, ECCDMode
 import numpy as np
 import sys
+import os
 
 returnvec=[]
+
+if os.path.exists("out_snap.txt"):   
+    os.remove("out_snap.txt")
 with dcam:
     camera = dcam[0]
     with camera:

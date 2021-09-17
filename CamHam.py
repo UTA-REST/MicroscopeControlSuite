@@ -11,5 +11,8 @@ class CamHam:
         returnvec=[]
         for ni in range(0,N):
             subprocess.run("python hamsnap.py " + str(self.exposure) + " " + self.CCDMode)
-            returnvec.append(np.loadtxt("out_snap.txt"))
+            try:
+                returnvec.append(np.loadtxt("out_snap.txt"))
+            except:
+                print("Problem with camera! No image acquired")
         return returnvec
