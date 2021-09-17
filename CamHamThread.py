@@ -4,6 +4,7 @@ import numpy as np
 import threading
 from hamamatsu.dcam import dcam, Stream, copy_frame, ECCDMode
 import sys
+import time
 
 class CamHamThread:
     def __init__(self,exposure=1, CCDMode='Normal',SensitivityGain=1,BufferLength=10,RunUntil=2000,BufferPath="./buffer/"):
@@ -15,24 +16,28 @@ class CamHamThread:
         self.BufferPath=BufferPath
         
         self.ImageID=0
-        self.thr=threading.Thread(target=ThreadFunction,args=())
+        self.sleeptime=0.05
+        self.thr=threading.Thread(target=self.ThreadFunction,args=())
+        self.thr.daemon = True
         self.thr.start()
+        self.running=True
+        time.sleep(5)
         
-    def BufferID(int n=0):
+    def BufferID(self,n=0):
         return (self.ImageID-n)%self.BufferLength
 
     def ThreadFunction(self):
         with dcam:
             camera = dcam[0]
             with camera:
-                camera["exposure_time"] = float(sys.argv[1])
+                camera["exposure_time"] = self.exposure
 
                 if(self.CCDMode=='Normal'):
                     camera['ccd_mode']=ECCDMode.NORMALCCD
                 elif(self.CCDMode=='EMCCD'):
                     camera['ccd_mode']=ECCDMode.EMCCD
                 camera['readout_speed'] = 1
-                camera['sensitivity_gain']=self.SensitivityGain
+                camera['sensitivity']=self.SensitivityGain
 
 
                 with Stream(camera, self.RunUntil) as stream:
@@ -40,15 +45,30 @@ class CamHamThread:
 
                         for i, frame_buffer in enumerate(stream):
                             frame = copy_frame(frame_buffer)
-                            np.savetxt(self.BufferPath+"buffer"+self.BufferID()+'.txt',frame)
+                            np.savetxt(self.BufferPath+"buffer"+str(self.BufferID())+'.txt',frame)
                             self.ImageID=self.ImageID+1
-   
-    def Snap():
-        return np.loadtxt(BufferPath+"buffer"+self.BufferID()+'.txt')
+                self.running=False
+        
+
+    def Snap(self, n):
+        if(not self.running):
+            print("Camera not running!   Restart it!")
+            return False
+        returnvec=[]
+        for i in range(0,n):
+            returnvec.append(self.SnapOne())
+        return returnvec
     
-    def GetWholeBuffer():
+    def SnapOne(self,waitforit=True):
+        presentbuffer=self.ImageID
+        if(waitforit):
+            while(self.ImageID<=(presentbuffer+1)):
+                time.sleep(self.sleeptime)
+        return np.loadtxt(self.BufferPath+"buffer"+str(self.BufferID())+'.txt')
+ 
+    def GetWholeBuffer(self):
         returnvec=[]
         for i in range(0, self.BufferLength):
-            returnvec.append(np.loadtxt(self.BufferPath+"buffer"+self.BufferID(i)+'.txt'))
+            returnvec.append(np.loadtxt(self.BufferPath+"buffer"+str(self.BufferID(i))+'.txt'))
         return returnvec
 

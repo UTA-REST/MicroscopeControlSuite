@@ -1,0 +1,7 @@
+
+*.txt
+*.pyc
+.ipynb_checkpoints/ExampleHamAndStage-checkpoint.ipynb
+.ipynb_checkpoints/ExampleFLIRAndStage-checkpoint.ipynb
+.ipynb_checkpoints/ExampleFLIRAndStage-checkpoint.ipynb
+out_snap.txt
