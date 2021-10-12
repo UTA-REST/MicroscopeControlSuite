@@ -7,7 +7,7 @@ import sys
 import time
 
 class CamHamThread:
-    def __init__(self,exposure=1, CCDMode='Normal',SensitivityGain=1,BufferLength=10,RunUntil=2000,BufferPath="./buffer/"):
+    def __init__(self,exposure=1, CCDMode='Normal',SensitivityGain=1,BufferLength=10,RunUntil=20000,BufferPath="./buffer/"):
         self.exposure=exposure
         self.CCDMode=CCDMode
         self.BufferLength=BufferLength
@@ -62,7 +62,7 @@ class CamHamThread:
     def SnapOne(self,waitforit=True):
         presentbuffer=self.ImageID
         if(waitforit):
-            while(self.ImageID<=(presentbuffer+1)):
+            while(self.ImageID==presentbuffer):
                 time.sleep(self.sleeptime)
         return np.loadtxt(self.BufferPath+"buffer"+str(self.BufferID())+'.txt')
  
