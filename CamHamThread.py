@@ -7,7 +7,7 @@ import sys
 import time
 
 class CamHamThread:
-    def __init__(self,exposure=1, CCDMode='Normal',SensitivityGain=1,BufferLength=10,RunUntil=20000,BufferPath="./buffer/"):
+    def __init__(self,exposure=1, CCDMode='Normal',SensitivityGain=1,BufferLength=100,RunUntil=20000,BufferPath="./buffer/"):
         self.exposure=exposure
         self.CCDMode=CCDMode
         self.BufferLength=BufferLength
@@ -16,7 +16,7 @@ class CamHamThread:
         self.BufferPath=BufferPath
         
         self.ImageID=0
-        self.sleeptime=0.05
+        self.sleeptime=0.2
         self.thr=threading.Thread(target=self.ThreadFunction,args=())
         self.thr.daemon = True
         self.thr.start()
@@ -63,8 +63,10 @@ class CamHamThread:
         presentbuffer=self.ImageID
         if(waitforit):
             while(self.ImageID==presentbuffer):
-                time.sleep(self.sleeptime)
-        return np.loadtxt(self.BufferPath+"buffer"+str(self.BufferID())+'.txt')
+                time.sleep(self.exposure)
+        BufferIDToLoad=self.BufferID()
+        time.sleep(self.exposure)
+        return np.loadtxt(self.BufferPath+"buffer"+str(BufferIDToLoad)+'.txt')
  
     def GetWholeBuffer(self):
         returnvec=[]

@@ -1,7 +1,8 @@
 from pipython import GCSDevice
 from pipython import pitools
+import scipy
+from scipy.interpolate import interp2d
 import time
-
 
 class Stage:
 
@@ -22,28 +23,31 @@ class Stage:
         self.__Z_Axis.ConnectUSB(serialnum='120002962')
         pitools.startup(self.__Z_Axis)
         self.__Z_Axis.SVO( self.__Z_Axis.axes, values=True)
+        time.sleep(0.5)
         self.__Z_Axis.FNL(self.__Z_Axis.axes)
-        
+        time.sleep(2)
         self.__X_Axis.ConnectUSB(serialnum='120002968')
         pitools.startup(self.__X_Axis)
         self.__X_Axis.SVO( self.__X_Axis.axes, values=True)
+        time.sleep(2)
         self.__X_Axis.FNL(self.__X_Axis.axes)
         
         self.__Y_Axis.ConnectUSB(serialnum='120003784')
         pitools.startup(self.__Y_Axis)
         self.__Y_Axis.SVO( self.__Y_Axis.axes, values=True)
-        time.sleep(5)
+        time.sleep(10)
 
         self.MoveToX(0) 
         self.__Y_Axis.FNL(self.__Y_Axis.axes)
         
-        time.sleep(5)
+        time.sleep(10)
         
         if(XYZStart!=None):
             self.MoveToX( XYZStart[0])
             self.MoveToY( XYZStart[1])
             self.MoveToZ( XYZStart[2])
 
+        self.FocalPlane=None
 
     def MoveToX(self,x):
         self.__X_Axis.MOV(self.__X_Axis.axes, x)
@@ -64,3 +68,14 @@ class Stage:
         
     def GetAxes(self):
         return(self.__X_Axis, self.__Y_Axis, self.__Z_Axis)
+
+    def DefineFocalPlane(self,FocalPoints):
+        self.FocalPlane=interp2d(FocalPoints[:,0],FocalPoints[:,1],FocalPoints[:,2])
+    
+    def FocusAt(self,x,y):
+        if(self.FocalPlane==None):
+            print("No focal plane set! Find focal points and try again")
+            return(False) 
+        self.MoveToX(x)
+        self.MoveToY(y)
+        self.MoveToZ(self.FocalPlane(x,y)[0])
