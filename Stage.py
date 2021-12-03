@@ -1,6 +1,7 @@
 from pipython import GCSDevice
 from pipython import pitools
 import scipy
+from scipy import optimize
 from scipy.interpolate import interp2d
 import time
 
@@ -69,8 +70,23 @@ class Stage:
     def GetAxes(self):
         return(self.__X_Axis, self.__Y_Axis, self.__Z_Axis)
 
+    
     def DefineFocalPlane(self,FocalPoints):
-        self.FocalPlane=interp2d(FocalPoints[:,0],FocalPoints[:,1],FocalPoints[:,2])
+        
+        xs=FocalPoints[:,0]
+        ys=FocalPoints[:,1]
+        zs=FocalPoints[:,2]
+                 
+        # Function of a plane in 2D
+        def PlaneFunction(x,y, args):
+            return args[0]*x + args[1]*y + args[2]
+
+        # Scalar function to minimize to find best fit plane from focal points
+        Minimizefunction = lambda args: sum((zs-PlaneFunction(xs,ys, args))**2)
+
+        # Minimize and find the best fit plane 
+        res=optimize.minimize(Minimizefunction,[0,0,0])
+        self.FocalPlane= lambda x,y: PlaneFunction(x,y, res.x)
     
     def FocusAt(self,x,y):
         if(self.FocalPlane==None):
@@ -78,4 +94,4 @@ class Stage:
             return(False) 
         self.MoveToX(x)
         self.MoveToY(y)
-        self.MoveToZ(self.FocalPlane(x,y)[0])
+        self.MoveToZ(self.FocalPlane(x,y))
