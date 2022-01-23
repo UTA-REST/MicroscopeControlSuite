@@ -1,4 +1,3 @@
-
 from matplotlib import pyplot
 from skimage import io
 import os
@@ -7,20 +6,45 @@ import skimage.io
 import skimage.color
 import skimage.filters
 from matplotlib.pyplot import cm
+import scipy.signal
+import time
 
 class AFonSingles:
-    def __init__(self):
+    def __init__(self, cam):
+       self.cam = cam
+
+    #saves the zsweep to the AF directory
+    def MakeImageSweepForAF(self, Zs, stg, showthem=True):
+
+        # Put the images in this array
+        pics=[]
+        zVals=[]
+
+
+        for i in range(0,len(Zs)):
+
+            # Move stage
+            stg.MoveToZ(Zs[i])
+
+            #Snap a pic
+            pics.append(self.cam.Snap(1)[0])
+            zVals.append(Zs[i])
+
+            print(Zs[i])
+            time.sleep(1)
+
+        return zVals, pics
 
     #scipy signals convolve 2d
     #this makes sure it is in greyscale (some of the pics have weird extra things)
-
-    def processImage(self,image):
-        ks=np.loadtxt(image, delimiter= ' ',dtype=float)
-        print(ks)
-        return ks
+    
+    def processImage(self, image):
+    #image=np.loadtxt(image, delimiter= ' ',dtype=float)
+    
+        return image
 
     #creates your kernel and applys it!
-    def convolve2D(image, kernel,  strides=1):
+    def convolve2D(self, image, kernel,  strides=1):
         # Cross Correlation, flips all of the entrys in the kernal
         kernel = np.flipud(np.fliplr(kernel))
 
@@ -54,7 +78,7 @@ class AFonSingles:
                         break
         return output
 
-    def threshold(self,image1):
+    def threshold(self, image1):
         # load the image
         image = skimage.io.imread(image1)
 
@@ -132,22 +156,39 @@ class AFonSingles:
         array = np.asarray(array)
         kernel = np.array(array)
         return kernel
-    def main(pics, zVals):
-       
+
+    def main(self, pics, zVals):
+
         numWhitePixelsArr = []
         for image in pics:
             #pass the .txt file that cam.snap returns from the made directory
             image = self.processImage(image)
-            kernel = self.makekernel()
-            output = convolve2D(image, kernel, strides=1)
+            #kernel = self.makekernel()
+            kernel = [[-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25,  0.0,    1.,    1.,    1.,    1.,   -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25,  1.,    1. ,   1.,    1.,    1.,   -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25,  1.,    1.,    1.,    1.,    1.,   -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25,  1.,    1.,    1.,    1.,    1.,   -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25,  1.,    1.,    1.,    1.,    1.,   -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25],
+                     [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25]]
+
+            #output = convolve2D(image, kernel, strides=1)
+            output = scipy.signal.convolve2d(image, kernel,
+                                  mode='same', boundary='fill')
+
             pyplot.imsave("onePic.jpg", output, cmap=cm.gray)
-            numWhitePixels = threshold('/Users/oliviaseidel/Desktop/2-dConvolution/onePic.jpg')
+            numWhitePixels = self.threshold('onePic.jpg')
             numWhitePixelsArr.append(numWhitePixels)
 
         numWhitePixelsArr = np.asarray(numWhitePixelsArr)
+        print(numWhitePixelsArr)
         maxValIndex = max_index = np.argmax(numWhitePixelsArr, axis=0)
         #the maxvalindex is the index to find in array that saves the z position, return or print that, then go there
-        filenameInFocus = filelist[maxValIndex]
+        
         zValinFocus = zVals[maxValIndex]
-        print(filenameInFocus)
+
         return zValinFocus
