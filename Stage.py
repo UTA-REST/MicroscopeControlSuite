@@ -73,9 +73,9 @@ class Stage:
     
     def DefineFocalPlane(self,FocalPoints):
         
-        xs=FocalPoints[:,0]
-        ys=FocalPoints[:,1]
-        zs=FocalPoints[:,2]
+        xs=FocalPoints[:,0]    
+        ys=FocalPoints[:,1]        
+        zs=FocalPoints[:,2]        
                  
         # Function of a plane in 2D
         def PlaneFunction(x,y, args):

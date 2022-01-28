@@ -51,3 +51,5 @@ class CombinedAFMaster:
 
         #move stage to the in focus place
         self.stg.MoveToZ(zValinFocus)
+        print("Moved to z Val: ", zValinFocus)
+        
