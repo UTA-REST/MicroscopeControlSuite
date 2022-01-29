@@ -5,18 +5,15 @@ import numpy as np
 import time
 
 class AutoFocusMicroSpheres:
-    def __init__(self,exposure=1, CCDMode='Normal'):
-        self.exposure=exposure
-        self.CCDMode=CCDMode
+    def __init__(self, cam, exposure=1, CCDMode='Normal'):
+        self.cam = cam
+       
+    def MakeImageSweep2(self, Zs, stg, showthem=True):
         zVal = []
-        
-    def MakeImageSweep(self, Zs, stg, showthem=True):
-        zVal = []
-        # Put the images in this array
         pics=[]
-        
-        from CamHamThread import CamHamThread
-        cam=CamHamThread(exposure=0.5,SensitivityGain=4,CCDMode="NormalCCD")
+
+        #from CamHamThread import CamHamThread
+        #cam=CamHamThread(exposure=0.5,SensitivityGain=4,CCDMode="NormalCCD")
 
         for i in range(0,len(Zs)):
 
@@ -24,42 +21,34 @@ class AutoFocusMicroSpheres:
             stg.MoveToZ(Zs[i])
 
             #Snap a pic
-            pics.append(cam.Snap(1)[0])
+            pics.append(self.cam.Snap(1)[0])
+            zVal.append(Zs[i])
+
             print(Zs[i])
             time.sleep(1)
-            
-            zVal.append(Zs[i])
-        self.zVal = zVal
-        
-        print (pics)
-        print (len(pics)) 
-        
+        print ("Number of images taken in first z-sweep: ", len(pics))
         return pics
+        
+    def Autofocus(self, Zss, stg, showthem=True):
+        Zs=Zss
+        pics= self.MakeImageSweep2(Zs, stg, showthem=True)
 
-    def Autofocus(self, Zs, stg, showthem=True):
-        Zs=Zs
-        pics= self.MakeImageSweep(Zs, stg, showthem=True)
-        
-        
-        print (len(pics))
-        
+        #delete the first pic because often it is very bright due to the stage moving back and catching lots of light
+        pics.pop(0)
+
+
         arrayMax = []
         arrayTenthLargestVal=[]
         arrayHundrethLargestVal =[]
         numarray=[]
         num =0
-
         for pic in pics:
-            
-            
             # create the histogram
             num+=1
             numarray.append(num)
-
             imarray = np.asarray(pic)
             imarray=imarray.flatten()
             plt.figure()
-
             maxValue=np.max(imarray)
             arrayMax.append(maxValue)
             minValue=np.min(imarray)
@@ -76,10 +65,9 @@ class AutoFocusMicroSpheres:
             plt.axvline(x=xmin, ymin=0, ymax=1, color='blue',label = "min")
             plt.axvline(x=tenthLargestVal, ymin=0, ymax=1, color='green', label = "tenthLargestVal")
             plt.axvline(x=hundrethLargestVal, ymin=0, ymax=1, color='yellow', label = "hundrethLargestVal")
-            plt.axvline(x=thousandthLargestVal, ymin=0, ymax=1, color='orange', Label = "thousandthLargestVal")
+            plt.axvline(x=thousandthLargestVal, ymin=0, ymax=1, color='orange', label = "thousandthLargestVal")
             plt.axvline(x=tenthousandthLargestVal, ymin=0, ymax=1, color='pink', label = "tenthousandthLargestVal")
             plt.legend(loc="upper left")
-
             (n, bins, patches) = plt.hist(imarray, bins=10**np.logspace(np.log10(.1),np.log10(5.0), 256), histtype='stepfilled')
             plt.yscale('symlog')
             plt.xscale('log')
@@ -90,7 +78,6 @@ class AutoFocusMicroSpheres:
             plt.ylim(1, 1000000)
             plt.savefig(r"C:\Users\ohs2758\Documents\plots"+ str(num))
             plt.close()
-
         plt.figure()
         plt.plot(numarray,arrayMax, color ='red',label="max")
         plt.plot(numarray,arrayTenthLargestVal, color ='green',label = "tenthLargestVal")
@@ -100,10 +87,6 @@ class AutoFocusMicroSpheres:
         plt.ylabel("Brightness Value")
         plt.legend(loc="upper left")
         plt.show()
-
-        MaxTenthBrightestVal=np.max(arrayTenthLargestVal)
-        indexTenthVal = arrayTenthLargestVal.index(MaxTenthBrightestVal)
-
-        
-        print("Sucessfully AutoFocused at ", self.zVal[indexTenthVal])
-        return self.zVal[indexTenthVal]
+        MaxTenthBrightestVal2=np.max(arrayTenthLargestVal)
+        indexTenthVal = arrayTenthLargestVal.index(MaxTenthBrightestVal2)
+        return indexTenthVal
