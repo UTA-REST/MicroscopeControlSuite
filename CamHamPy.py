@@ -24,6 +24,7 @@ class CamHamPy:
                 
 
     def Snap(self, ExposureTime=0.5,GainMode=0,Sensitivity=1):
+        data=None
         self.dcam0.prop_setvalue(DCAM_IDPROP.EXPOSURETIME,ExposureTime)
         self.dcam0.prop_setvalue(DCAM_IDPROP.DIRECTEMGAIN_MODE,GainMode)
         self.dcam0.prop_setvalue(DCAM_IDPROP.SENSITIVITY,Sensitivity)
@@ -50,11 +51,7 @@ class CamHamPy:
             self.dcam0.buf_release()
         else:
             print('-NG: Dcam.buf_alloc(1) fails with error {}'.format(self.dcam0.lasterr()))
-        try:
-            pylab.imsave("./LatestImg.png",data)
-        except:
-            print("Warning: r/w clash, file not saved")
-        return(data)
+        return(data)        
     
     def Close(self):
         try:
