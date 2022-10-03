@@ -284,7 +284,8 @@ class MicroGui:
         ImageID=int(self.StoreCount.text())
         if(ImageID>1):
             self.StoreCount.setText(str(ImageID-1))
-            FileName=self.StorePath.text()+"/im_" +str(self.ImagesToSave-ImageID)
+            zeros=int(np.log10(self.ImagesToSave))+1
+            FileName=self.StorePath.text()+"/im_" +str(self.ImagesToSave-str(ImageID).zfill(zeros))
             if(self.ImageCompression):
                 f=lzma.open(FileName+".xz",'wb')
                 f.write(self.CurrentImage)
