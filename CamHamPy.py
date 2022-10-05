@@ -24,7 +24,7 @@ class CamHamPy:
                 
 
     def Snap(self, ExposureTime=0.5,GainMode=0,Sensitivity=1):
-        data=None
+        data=[]
         self.dcam0.prop_setvalue(DCAM_IDPROP.EXPOSURETIME,ExposureTime)
         self.dcam0.prop_setvalue(DCAM_IDPROP.DIRECTEMGAIN_MODE,GainMode)
         self.dcam0.prop_setvalue(DCAM_IDPROP.SENSITIVITY,Sensitivity)
