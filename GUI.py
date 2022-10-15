@@ -16,6 +16,8 @@ from time import time, sleep
 from scipy import optimize
 from scipy.interpolate import interp2d
 import lzma
+        
+
 
 
 
@@ -93,7 +95,7 @@ class ImageStream(QObject):
 
     MyCamera=None
 
-
+    
 
     def __init__(self,camdict):
         super().__init__()
@@ -104,11 +106,14 @@ class ImageStream(QObject):
             if(self.MyCamera['go']==True):
 
                 myimage = np.array(self.MyCamera['cam'].Snap(self.MyCamera['CS'].Exposure/1000, int(self.MyCamera['CS'].EMCCD), self.MyCamera['CS'].Gain))
+                
+                ROI=self.MyCamera['ROI']
+                statimage=myimage[ROI[0][0]:ROI[0][1],ROI[1][0]:ROI[1][1]]
                 if(len(myimage)>0):
                     self.image.emit(myimage)
 
-                    mystats = [sum(sum(myimage)),
-                            stats.kurtosis(np.ndarray.flatten(myimage))]
+                    mystats = [sum(sum(statimage)),
+                            stats.kurtosis(np.ndarray.flatten(statimage))]
                     self.stats.emit(mystats)
             sleep(self.MyCamera['CS'].Exposure/1000)
 
@@ -144,11 +149,14 @@ class MicroGui:
     FS = FieldSettings()   # Field setting parameters
 
     AmZSweeping=False      # Are we mid Z-sweep?
+    AmCustomAction=False   # Are we mid execution of a custom action?
     AmStreaming=False      # Are we streaming images from camera?
     ServosOn=True          # Are the servos on?
-
+    ActionNo=0             # Which number custom action to execute?
+    
     FocalPlane=None        # Focal plane object, comes to life when >2 focal points found
 
+ 
 
     CurrentImage=np.array([[0,0],[0,0]])   # The most recent image
 
@@ -156,9 +164,10 @@ class MicroGui:
     # pass by reference to other threads.
     camdict={'cam':DummyCamera(),
             'CS':CameraSettings(),
-            'go':False}
+            'go':False,
+            'ROI':[[75,505],[75,505]]}
 
-
+    
 
     #=================
     # Hooks to I/O
@@ -168,7 +177,25 @@ class MicroGui:
     # A summy stage object (real one initiated in __init__)
     MyStage=DummyStage()
 
-
+    # Write here whatever you want to do when user pushes the custom action button
+    def CustomAction(self):
+        NstepsX=33
+        NstepsY=33
+        FieldStep=0.030
+        XX,YY=np.meshgrid(np.arange(self.XOrigin,self.XOrigin+NstepsX*FieldStep+0.0001,FieldStep),
+                          np.arange(self.YOrigin,self.YOrigin+NstepsY*FieldStep+0.0001,FieldStep))
+        XX=XX.flatten()
+        YY=YY.flatten()
+        if(self.ActionNo%2==0):
+            XTo=XX[int(self.ActionNo/2)]
+            YTo=YY[int(self.ActionNo/2)]
+            ZTo=self.FocalPlane(XTo,YTo)
+            self.MoveTo(XTo,YTo,ZTo)
+        self.ActionNo=self.ActionNo+1
+        if(self.ActionNo==len(XX)):
+            self.AmCustomAction=False
+            self.NextStageAction=self.NullStageAction
+        
     # This starts the thread running for the camera acquisitions
     def SetupCameraThread(self):
         self.thread = QThread()
@@ -185,6 +212,10 @@ class MicroGui:
         self.LastSnapTime=time()
         self.ax_photo.clear()
         self.ax_photo.imshow(self.CurrentImage,cmap=self.colormap)
+        ROI=self.camdict['ROI']
+        plt.plot([ROI[0][0],ROI[0][1],ROI[0][1],ROI[0][0],ROI[0][0]],
+                [ROI[1][0],ROI[1][0],ROI[1][1],ROI[1][1],ROI[1][0]],
+                '--',linewidth=0.5,color='blue')
         self.ax_photo.set_xticks([])
         self.ax_photo.set_yticks([])
         self.CanvasPhoto.draw()
@@ -285,13 +316,21 @@ class MicroGui:
         if(ImageID>1):
             self.StoreCount.setText(str(ImageID-1))
             zeros=int(np.log10(self.ImagesToSave))+1
-            FileName=self.StorePath.text()+"/im_" +str(self.ImagesToSave-str(ImageID).zfill(zeros))
+            FileName=self.StorePath.text()+"/im_" +str(self.ImagesToSave-ImageID).zfill(zeros)
             if(self.ImageCompression):
                 f=lzma.open(FileName+".xz",'wb')
                 f.write(self.CurrentImage)
                 f.close()
             else:
                 np.savetxt(FileName+".txt", self.CurrentImage)
+            MetaDataFile=self.StorePath.text()+"/metadata.txt"
+            try:
+                MetaData=np.loadtxt(MetaDataFile)
+                MetaData=np.append(MetaData,
+                                   [self.ImagesToSave-ImageID,self.X,self.Y,self.Z])
+            except:
+                MetaData=[[-1,0,0,0],[self.ImagesToSave-ImageID,self.X,self.Y,self.Z]]
+            np.savetxt(MetaDataFile,MetaData)
         else:
             self.NextCameraAction=self.NullCameraAction
             self.Sequence.setText("Go")
@@ -419,6 +458,19 @@ class MicroGui:
                     float(self.YText.text()),
                     float(self.ZText.text()))
 
+    def on_custom_click(self):
+        if(self.AmCustomAction==False):
+            self.XOrigin=self.X
+            self.YOrigin=self.Y
+            self.ZOrigin=self.Z
+            self.AmCustomAction=True
+            self.NextStageAction=self.CustomAction
+            self.ActionNo=0
+        else:
+            self.AmCustomAction=False
+            self.NextStageAction=self.NullStageAction                         
+
+        
     def on_zsweep_click(self):
         if(self.AmZSweeping==False):
             self.ClearZHistory()
@@ -641,6 +693,10 @@ class MicroGui:
 
         self.ZSweep=QPushButton('Start ZSweep')
         self.ZSweep.clicked.connect(self.on_zsweep_click)
+        
+        self.Custom=QPushButton('Start Custom')
+        self.Custom.clicked.connect(self.on_custom_click)
+        
         self.ZSweepMin=QLineEdit(text=str(self.FS.ZSweepMin))
         self.ZSweepMax=QLineEdit(text=str(self.FS.ZSweepMax))
         self.ZSweepSteps=QLineEdit(text=str(self.FS.ZSweepSteps))
@@ -667,22 +723,25 @@ class MicroGui:
 
         self.ActionsLayout.addWidget(self.ServosCheckBox,2,0,1,2)
         self.ActionsLayout.addWidget(self.CameraCheckBox,2,1,1,2)
+        
+        self.ActionsLayout.addWidget(QLabel("Custom Action:"),4,0,1,1)
+        self.ActionsLayout.addWidget(self.Custom,5,0,1,2)
 
-        self.ActionsLayout.addWidget(QLabel("ZSweep:"),4,0,1,1)
-        self.ActionsLayout.addWidget(self.ZSweep,5,0,1,2)
-        self.ActionsLayout.addWidget(self.ZSweepMin,6,0,1,1)
-        self.ActionsLayout.addWidget(self.ZSweepMax,6,1,1,1)
-        self.ActionsLayout.addWidget(self.ZSweepSteps,6,2,1,1)
+        self.ActionsLayout.addWidget(QLabel("ZSweep:"),6,0,1,1)
+        self.ActionsLayout.addWidget(self.ZSweep,7,0,1,2)
+        self.ActionsLayout.addWidget(self.ZSweepMin,8,0,1,1)
+        self.ActionsLayout.addWidget(self.ZSweepMax,8,1,1,1)
+        self.ActionsLayout.addWidget(self.ZSweepSteps,8,2,1,1)
+        
+        self.ActionsLayout.addWidget(QLabel("AutoFocus:"),10,0,1,3)
+        self.ActionsLayout.addWidget(self.AutoFocusIntensity,11,0,1,1)
+        self.ActionsLayout.addWidget(self.AutoFocusKurtosis,11,1,1,1)
+        self.ActionsLayout.addWidget(self.AutoFocusClear,11,2,1,1)
 
-        self.ActionsLayout.addWidget(QLabel("AutoFocus:"),8,0,1,3)
-        self.ActionsLayout.addWidget(self.AutoFocusIntensity,9,0,1,1)
-        self.ActionsLayout.addWidget(self.AutoFocusKurtosis,9,1,1,1)
-        self.ActionsLayout.addWidget(self.AutoFocusClear,9,2,1,1)
-
-        self.ActionsLayout.addWidget(QLabel("Focal Plane:"),11,0,1,3)
-        self.ActionsLayout.addWidget(self.FocusHere,12,0,1,1)
-        self.ActionsLayout.addWidget(self.FocusExtrap,12,1,1,1)
-        self.ActionsLayout.addWidget(self.FocusClear,12,2,1,1)
+        self.ActionsLayout.addWidget(QLabel("Focal Plane:"),13,0,1,3)
+        self.ActionsLayout.addWidget(self.FocusHere,14,0,1,1)
+        self.ActionsLayout.addWidget(self.FocusExtrap,14,1,1,1)
+        self.ActionsLayout.addWidget(self.FocusClear,14,2,1,1)
 
     def SetupCanvasFrame(self):
         self.FigLayout=QVBoxLayout()
@@ -749,10 +808,16 @@ class MicroGui:
     #  Initializer
     # ===================
 
-    def __init__(self,HARDWARE_ON=True, COMPRESSION_ON=True):
+    def __init__(self,HARDWARE_ON=False, COMPRESSION_ON=True, StageIn=None, CamHamPyIn=None):
 
         self.ImageCompression=COMPRESSION_ON
 
+        global Stage
+        Stage=StageIn
+        
+        global CamHamPy
+        CamHamPy=CamHamPyIn
+        
         # Start the history
         self.LastSnapTime=time()
         self.HisT.X=[self.FS.XInit]
