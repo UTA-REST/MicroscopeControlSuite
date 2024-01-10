@@ -12,7 +12,7 @@ class Stage:
     Y=0
     Z=0
     
-    StagePosFile="TmpData/stagepos.txt"
+    StagePosFile="Data/stagepos.txt"
 
     __X_Axis=None
     __Y_Axis=None
