@@ -59,7 +59,7 @@ class FieldSettings:
 class DummyCamera:
     def Snap(self, Exposure, GainMode, Gain):
         return(Gain*Exposure*np.random.rand(512,512))
-    def Close():
+    def Close(self):
         return
 
 class DummyStage:
@@ -337,7 +337,7 @@ class MicroGui:
 
     # Advance stage to next Z position
     def ZSweepStageAction(self):
-        if(self.Z<self.FS.ZSweepMax):
+        if(self.Z<self.FS.ZSweepMax and self.AmZSweeping):
             self.MoveTo(self.X,self.Y,self.Z+(self.FS.ZSweepMax-self.FS.ZSweepMin)/self.FS.ZSweepSteps)
         else:
             NextStageAction=self.NullStageAction
@@ -416,10 +416,12 @@ class MicroGui:
             self.ax_z[0].text(self.FS.ZMin+(self.FS.ZSweepMax-self.FS.ZSweepMin)*0.05,TopIntensity-(TopIntensity-BottomIntensity)*.08,np.round(self.HisZ.Intensity[-1],2),va='top',fontsize=8)
             self.ax_z[1].text(self.FS.ZMin+(self.FS.ZSweepMax-self.FS.ZSweepMin)*0.05,TopKurtosis-(TopKurtosis-BottomKurtosis)*.08,np.round(self.HisZ.Kurtosis[-1],2),va='top',fontsize=8)
 
-
-            self.ax_z[0].set_ylim(BottomIntensity,TopIntensity)
-            self.ax_z[1].set_ylim(BottomKurtosis,TopKurtosis)
-
+            if(BottomIntensity<TopIntensity):
+                self.ax_z[0].set_ylim(BottomIntensity,TopIntensity)
+            if(BottomKurtosis<TopKurtosis):
+                self.ax_z[1].set_ylim(BottomKurtosis,TopKurtosis)
+           
+                
         self.CanvasObj.draw()
         self.CanvasObj2.draw()
 
